@@ -1,0 +1,50 @@
+name: GitHub Project Parent Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "変更を反映せず差分のみ確認"
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    - cron: "13 20 * * *"
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: project-parent-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync parent issue status
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_AUTOMATION_TOKEN }}
+          PROJECT_OWNER: ${{ vars.PROJECT_OWNER || 'e-llabo' }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER || '11' }}
+          REPOSITORY: ${{ github.repository }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'false' }}
+        run: |
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "PROJECT_AUTOMATION_TOKEN が未設定です。" >&2
+            exit 1
+          fi
+          if ! gh api user >/dev/null 2>&1; then
+            echo "PROJECT_AUTOMATION_TOKEN が無効です（HTTP 401）。トークン再発行・SSO承認・権限確認（repo/read:org/project）を実施してください。" >&2
+            exit 1
+          fi
+          if ! gh project view "${PROJECT_NUMBER}" --owner "${PROJECT_OWNER}" --format json -q .id >/dev/null 2>&1; then
+            echo "Project API へアクセスできません。PROJECT_AUTOMATION_TOKEN の project 権限と対象OrganizationへのSSO承認を確認してください。" >&2
+            exit 1
+          fi
+          bash .github/scripts/sync_project_parent_status.sh
