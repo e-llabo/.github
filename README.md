@@ -36,4 +36,5 @@ e-llabo organization の共通設定リポジトリ。
 - **github-project-operations-policy.md**: Project 運用方針（ステータス遷移・ゲートチェック）
 - **github-issue-creation-guide.md**: Issue 起票ガイドライン
 - **github-project-built-in-workflow-recommendations.md**: GitHub Project Workflow 推奨設定
+- **github-project-setup-guide.md**: Project 新規作成手順（フィールド定義・Actions連携・トークン設定）
 - **references/**: Backlog → GitHub 移行ツール・ガイド
