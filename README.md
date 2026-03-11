@@ -18,6 +18,19 @@ e-llabo organization の共通設定リポジトリ。
 
 セットアップ手順は [claude/SYMLINK_SETUP.md](claude/SYMLINK_SETUP.md) を参照。
 
+### GitHub Actions (`.github/workflows/`, `.github/scripts/`)
+
+- **project_status_sync.yml**: PR/Issue イベントに連動した Project ステータス自動遷移
+- **project_parent_sync.yml**: 親子課題のステータス同期（日次スケジュール）
+
+> **注意**: `.github` リポに置いたワークフローは、このリポ自体のイベントにしか発火しない。
+> 各リポ（ELL_portal 等）で動作させるには、以下のいずれかの対応が必要:
+>
+> 1. **各リポにもワークフローを配置する**（現状の運用。このリポを正本として同期管理）
+> 2. **Reusable workflow として呼び出す** — 各リポのワークフローから `uses: e-llabo/.github/.github/workflows/project_status_sync.yml@main` で参照（推奨移行先）
+>
+> スクリプト（`.github/scripts/`）は reusable workflow と組み合わせる場合、呼び出し元リポに checkout が必要な点に注意。
+
 ### GitHub 運用ドキュメント (`docs/`)
 
 - **github-project-operations-policy.md**: Project 運用方針（ステータス遷移・ゲートチェック）
