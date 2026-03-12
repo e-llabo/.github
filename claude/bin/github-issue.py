@@ -11,6 +11,11 @@ import unicodedata
 from datetime import datetime, date, timedelta
 from typing import Optional, Dict, List, Any, Tuple
 
+# Windows環境でのUTF-8出力を保証
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 # ============================================================
 # 定数
 # ============================================================
@@ -42,14 +47,15 @@ VALID_TEMPLATES = [
 def run_gh(args, allow_empty=False, timeout=60):
     """ghコマンドを実行してstdoutを返す"""
     result = subprocess.run(
-        ["gh"] + args, capture_output=True, text=True, timeout=timeout,
+        ["gh"] + args, capture_output=True, text=True, encoding="utf-8",
+        errors="replace", timeout=timeout,
     )
     if result.returncode != 0:
         if allow_empty:
             return ""
-        print(f"Error: gh {' '.join(args[:6])}...\n{result.stderr.strip()}", file=sys.stderr)
+        print(f"Error: gh {' '.join(args[:6])}...\n{(result.stderr or '').strip()}", file=sys.stderr)
         return ""
-    return result.stdout.strip()
+    return (result.stdout or "").strip()
 
 
 def run_gh_json(args, allow_empty=False, timeout=60):
@@ -705,18 +711,40 @@ def cmd_create(args, client: ProjectClient) -> int:
     if not body:
         body = build_issue_body(template=template, estimate=args.estimate, depends_on=depends_on)
 
-    # ラベル構築（bug テンプレートは自動で bug ラベル付与）
+    # ラベル構築（テンプレートに応じた種別ラベル自動付与）
     labels = []
     if args.labels:
         labels = [l.strip() for l in args.labels.split(",")]
-    if template == "bug" and "bug" not in labels:
-        labels.append("bug")
+    template_label_map = {
+        "bug": "bug",
+        "task": "task",
+        "feature-parent": "feature",
+        "feature-child-req": "feature",
+        "feature-child-spec": "feature",
+        "feature-child-impl": "feature",
+    }
+    auto_label = template_label_map.get(template)
+    if auto_label and auto_label not in labels:
+        labels.append(auto_label)
+    # feature-child にはフェーズラベルも自動付与
+    phase_label_map = {
+        "feature-child-req": "requirements",
+        "feature-child-spec": "requirements",
+        "feature-child-impl": "implementation",
+    }
+    auto_phase = phase_label_map.get(template)
+    if auto_phase and auto_phase not in labels:
+        labels.append(auto_phase)
 
     # タイトルプレフィクス（テンプレートに応じた自動付与）
     title = args.title
     prefix_map = {
         "bug": "[BUG] ",
+        "task": "[TASK] ",
         "feature-parent": "[FEATURE] ",
+        "feature-child-req": "[FEATURE] ",
+        "feature-child-spec": "[FEATURE] ",
+        "feature-child-impl": "[FEATURE] ",
     }
     prefix = prefix_map.get(template, "")
     if prefix and not title.startswith(prefix):
@@ -915,6 +943,124 @@ def cmd_list(args, client: ProjectClient) -> int:
         )
 
     print(f"\n合計: {len(items)}件")
+    return 0
+
+
+def cmd_list_projects(args, _client=None) -> int:
+    """org内のGitHub Projectsを一覧表示"""
+    org = args.org
+    raw = run_gh([
+        "project", "list", "--owner", org, "--format", "json",
+        "--limit", "50",
+    ])
+    if not raw:
+        log_err("Project一覧の取得に失敗しました")
+        return 1
+
+    data = json.loads(raw)
+    projects = data.get("projects", [])
+    if not projects:
+        log("Projectが見つかりません")
+        return 0
+
+    print(f"\n{'#':<6} {'タイトル':<40} {'状態':<10} {'URL'}")
+    print("-" * 90)
+    for p in projects:
+        num = p.get("number", "")
+        title = truncate(p.get("title", ""), 38)
+        state = "OPEN" if not p.get("closed") else "CLOSED"
+        url = p.get("url", "")
+        print(f"{str(num):<6} {pad(title, 40)} {pad(state, 10)} {url}")
+
+    print(f"\n合計: {len(projects)}件")
+    return 0
+
+
+def cmd_tree(args, client: ProjectClient) -> int:
+    """親→子→孫の階層ツリー表示"""
+    items = client.get_all_items()
+    issues = [i for i in items if i["type"] == "Issue"]
+
+    # stateフィルタ
+    if not args.show_all:
+        issues = [i for i in issues if i.get("state") == "OPEN"]
+
+    # Issue番号 → Issue データ
+    by_number = {}
+    for issue in issues:
+        num = issue.get("number")
+        if num is not None:
+            by_number[num] = issue
+
+    # 親番号 → 子リスト
+    children_of = {}
+    for issue in issues:
+        parent = issue.get("parent_number")
+        if parent:
+            children_of.setdefault(parent, []).append(issue)
+
+    # ルート = 親を持たない or 親がフィルタ外の Issue
+    roots = []
+    for issue in issues:
+        parent = issue.get("parent_number")
+        if not parent or parent not in by_number:
+            roots.append(issue)
+
+    # 特定の親を指定した場合はそこだけ表示
+    if args.root:
+        if args.root in by_number:
+            roots = [by_number[args.root]]
+        else:
+            log_err(f"Issue #{args.root} が見つかりません")
+            return 1
+
+    # ステータス順ソート
+    status_order = {s: i for i, s in enumerate(VALID_STATUSES)}
+    roots.sort(key=lambda x: (status_order.get(x.get("status") or "Backlog", 99), x.get("number", 0)))
+
+    def format_issue(issue):
+        num = issue.get("number", "?")
+        title = truncate(issue.get("title", ""), 40)
+        status = issue.get("status") or ""
+        blocked = ""
+        if issue.get("blocked") == "Yes":
+            bt = issue.get("blocker_type") or ""
+            blocked = f" [BLOCKED: {bt}]" if bt else " [BLOCKED]"
+        assignees = ",".join(issue.get("assignees", []))
+        assign_str = f" @{assignees}" if assignees else ""
+        return f"#{num} {title}  ({status}){blocked}{assign_str}"
+
+    def print_tree(issue, prefix="", is_last=True):
+        connector = "└── " if is_last else "├── "
+        print(f"{prefix}{connector}{format_issue(issue)}")
+        child_prefix = prefix + ("    " if is_last else "│   ")
+        kids = children_of.get(issue.get("number"), [])
+        kids.sort(key=lambda x: (status_order.get(x.get("status") or "Backlog", 99), x.get("number", 0)))
+        for i, child in enumerate(kids):
+            print_tree(child, child_prefix, i == len(kids) - 1)
+
+    # ルート以外の子を持つIssue（子持ちだがルートでもある）と純粋なルートを分離
+    has_children = set(children_of.keys())
+    parent_roots = [r for r in roots if r.get("number") in has_children]
+    leaf_roots = [r for r in roots if r.get("number") not in has_children]
+
+    if parent_roots:
+        print("=== 親子課題ツリー ===\n")
+        for i, root in enumerate(parent_roots):
+            print(format_issue(root))
+            kids = children_of.get(root.get("number"), [])
+            kids.sort(key=lambda x: (status_order.get(x.get("status") or "Backlog", 99), x.get("number", 0)))
+            for j, child in enumerate(kids):
+                print_tree(child, "", j == len(kids) - 1)
+            print()
+
+    if leaf_roots and not args.root:
+        print(f"=== 独立Issue ({len(leaf_roots)}件) ===\n")
+        for issue in leaf_roots:
+            print(f"  {format_issue(issue)}")
+
+    total_tree = sum(1 + len(children_of.get(r.get("number"), [])) for r in parent_roots)
+    print(f"\nツリー内: {total_tree}件 / 独立: {len(leaf_roots)}件 / 合計: {len(issues)}件")
     return 0
 
 
@@ -1163,8 +1309,8 @@ def main():
         description="GitHub Issue & Project操作CLI — Project運用方針準拠",
     )
     parser.add_argument("--org", default=DEFAULT_ORG, help=f"GitHub org名 (デフォルト: {DEFAULT_ORG})")
-    parser.add_argument("--project", type=int, default=DEFAULT_PROJECT_NUMBER,
-                        help=f"Project番号 (デフォルト: {DEFAULT_PROJECT_NUMBER})")
+    parser.add_argument("--project", type=int, default=None,
+                        help=f"Project番号 (省略時はClaude側で対話的に決定、またはデフォルト: {DEFAULT_PROJECT_NUMBER})")
     parser.add_argument("--repo", default=DEFAULT_REPO, help=f"リポジトリ (デフォルト: {DEFAULT_REPO})")
 
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -1215,16 +1361,32 @@ def main():
     p_sync = subparsers.add_parser("sync-parents", help="親子課題同期")
     p_sync.add_argument("--dry-run", action="store_true", help="変更を反映せず差分のみ確認")
 
+    # --- tree ---
+    p_tree = subparsers.add_parser("tree", help="親子課題ツリー表示")
+    p_tree.add_argument("--root", type=int, default=None, help="特定の親Issue番号からのツリーのみ表示")
+    p_tree.add_argument("--all", dest="show_all", action="store_true", help="CLOSEDも含めて表示")
+
     # --- weekly-check ---
     subparsers.add_parser("weekly-check", help="週次メンテナンスチェック")
 
+    # --- list-projects ---
+    subparsers.add_parser("list-projects", help="org内Project一覧")
+
     args = parser.parse_args()
-    client = ProjectClient(args.org, args.project, args.repo)
+
+    # list-projects はProjectClient不要
+    if args.command == "list-projects":
+        sys.exit(cmd_list_projects(args))
+
+    # それ以外のコマンドは --project 必須（未指定時はデフォルト）
+    project_number = args.project if args.project is not None else DEFAULT_PROJECT_NUMBER
+    client = ProjectClient(args.org, project_number, args.repo)
 
     handlers = {
         "create": cmd_create,
         "status": cmd_status,
         "list": cmd_list,
+        "tree": cmd_tree,
         "block": cmd_block,
         "unblock": cmd_unblock,
         "sync-parents": cmd_sync_parents,
