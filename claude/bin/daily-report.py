@@ -40,7 +40,8 @@ load_env_from_bashrc()
 def run_gh(args, allow_empty=False):
     """ghコマンドを実行してstdoutを返す"""
     result = subprocess.run(
-        ["gh"] + args, capture_output=True, text=True, timeout=30
+        ["gh"] + args, capture_output=True, text=True, timeout=30,
+        encoding="utf-8", errors="replace"
     )
     if result.returncode != 0:
         if allow_empty:
@@ -640,9 +641,9 @@ def get_all_project_items(org):
         ptitle = proj["title"]
         project_map[pnum] = ptitle
         print(f"  📋 Project #{pnum}: {ptitle} ...", end="", flush=True)
-        items = get_project_items(org, pnum)
+        items, _ptitle = get_project_items(org, pnum)
         for it in items:
-            it["project_name"] = ptitle
+            it["project_name"] = _ptitle or ptitle
         print(f" {len(items)}件")
         all_items.extend(items)
 
@@ -655,6 +656,7 @@ def get_project_items(org, project_number):
 query($org: String!, $number: Int!, $cursor: String) {
   organization(login: $org) {
     projectV2(number: $number) {
+      title
       items(first: 100, after: $cursor) {
         pageInfo { hasNextPage endCursor }
         nodes {
@@ -701,6 +703,7 @@ query($org: String!, $number: Int!, $cursor: String) {
 """
     all_items = []
     cursor = None
+    project_title = ""
 
     while True:
         args = ["api", "graphql",
@@ -715,6 +718,8 @@ query($org: String!, $number: Int!, $cursor: String) {
             break
 
         project = (result.get("data") or {}).get("organization", {}).get("projectV2") or {}
+        if not project_title:
+            project_title = project.get("title", "")
         items_data = project.get("items") or {}
         nodes = items_data.get("nodes") or []
 
@@ -794,7 +799,7 @@ query($org: String!, $number: Int!, $cursor: String) {
             key = (it.get("repo_full", ""), it.get("number"))
             it["review_state"] = review_map.get(key, "")
 
-    return all_items
+    return all_items, project_title
 
 
 def fetch_status_since(issues):
@@ -2313,7 +2318,161 @@ def generate_html(
             f'<ul>{"".join(slack_items)}</ul>'
         )
 
-    slack_html = "<br>".join(slack_sections)
+    # === 本日実績: Project→親課題→子課題 階層フォーマット ===
+    if project_items:
+        # 今日活動のあったIssue/PR番号をリポごとに収集
+        today_active = {}  # (repo, number) -> activity_type
+        for repo_name, rd in per_repo_data.items():
+            for pr in rd.get("prs", []):
+                today_active[(repo_name, pr["number"])] = "PR"
+                for inum in pr.get("issues", []):
+                    today_active[(repo_name, int(inum))] = "PR関連"
+            for ic in rd.get("issue_comments", []):
+                today_active[(repo_name, ic["issue_number"])] = "コメント"
+            for ci in rd.get("created_issues", []):
+                today_active[(repo_name, ci["number"])] = "新規起票"
+            for mp in rd.get("merged_prs", []):
+                today_active[(repo_name, mp["number"])] = "マージ"
+
+        # project_itemsから今日活動のあるものを抽出・Project別にグループ化
+        proj_groups = {}  # project_name -> list of items
+        for it in project_items:
+            repo = it.get("repo", "")
+            num = it.get("number")
+            if (repo, num) in today_active:
+                pname = it.get("project_name") or repo
+                proj_groups.setdefault(pname, []).append(it)
+
+        # 活動はあるがProjectに紐づかないリポのPR/Issue
+        proj_repos = set()
+        for it in project_items:
+            proj_repos.add(it.get("repo", ""))
+        for repo_name, rd in per_repo_data.items():
+            if repo_name in proj_repos:
+                continue
+            repo_items = []
+            for mp in rd.get("merged_prs", []):
+                repo_items.append({
+                    "number": mp["number"], "title": mp.get("title", ""),
+                    "url": mp.get("url", ""), "is_pr": True,
+                    "repo": repo_name, "_activity": "マージ",
+                })
+            for ci in rd.get("created_issues", []):
+                repo_items.append({
+                    "number": ci["number"], "title": ci.get("title", ""),
+                    "url": ci.get("url", ""), "is_pr": False,
+                    "repo": repo_name, "_activity": "新規起票",
+                })
+            for pr in rd.get("prs", []):
+                if not any(ri["number"] == pr["number"] for ri in repo_items):
+                    repo_items.append({
+                        "number": pr["number"], "title": pr.get("title", ""),
+                        "url": pr.get("url", ""), "is_pr": True,
+                        "repo": repo_name, "_activity": "PR",
+                    })
+            if repo_items:
+                proj_groups.setdefault(repo_name, []).extend(repo_items)
+
+        # Slack用HTML構築
+        slack_proj_parts = [f'<strong>本日実績</strong>']
+        for pname in sorted(proj_groups.keys()):
+            items = proj_groups[pname]
+            slack_proj_parts.append(f'<br><strong>{escape(pname)}</strong>')
+
+            # 親課題→子課題のツリー構築
+            parents = {}  # parent_url -> {"item": parent_item, "children": []}
+            orphans = []
+            for it in items:
+                parent = it.get("parent")
+                if parent:
+                    purl = parent.get("url", "")
+                    if purl not in parents:
+                        parents[purl] = {"item": parent, "children": []}
+                    parents[purl]["children"].append(it)
+                elif it.get("is_parent"):
+                    url = it.get("url", "")
+                    if url not in parents:
+                        parents[url] = {"item": it, "children": []}
+                    else:
+                        parents[url]["item"] = it
+                else:
+                    orphans.append(it)
+
+            # 親課題+子課題を出力
+            for purl, tree in parents.items():
+                p = tree["item"]
+                p_title = p.get("title", "")
+                p_num = p.get("number", "")
+                p_link_url = p.get("url", "")
+                slack_proj_parts.append(
+                    f'<br>{escape(p_title)} '
+                    f'(<a href="{escape(p_link_url)}">#{p_num}</a>)'
+                )
+                for child in tree["children"]:
+                    c_title = child.get("title", "")
+                    c_num = child.get("number", "")
+                    c_url = child.get("url", "")
+                    c_state = child.get("state", "")
+                    c_status = child.get("status", "")
+                    c_activity = today_active.get((child.get("repo", ""), c_num), child.get("_activity", ""))
+                    if c_state == "CLOSED" or c_activity == "完了確認":
+                        status_str = "完了"
+                    elif c_status == "In progress":
+                        status_str = "進行中"
+                    elif c_status == "In review":
+                        status_str = "レビュー中"
+                    elif child.get("blocked") == "Yes":
+                        status_str = "ブロック中"
+                    elif c_activity == "新規起票":
+                        status_str = "新規起票"
+                    elif c_activity == "マージ":
+                        status_str = "マージ"
+                    elif c_status:
+                        status_str = c_status
+                    else:
+                        status_str = c_activity
+                    slack_proj_parts.append(
+                        f'- {escape(c_title)} '
+                        f'(<a href="{escape(c_url)}">#{c_num}</a>)'
+                        f' → {escape(status_str)}'
+                    )
+
+            # 親なし単独アイテム
+            for it in orphans:
+                t = it.get("title", "")
+                n = it.get("number", "")
+                u = it.get("url", "")
+                state = it.get("state", "")
+                status = it.get("status", "")
+                activity = today_active.get((it.get("repo", ""), n), it.get("_activity", ""))
+                if state == "CLOSED":
+                    s = "完了"
+                elif it.get("is_pr") and (state == "MERGED" or activity == "マージ"):
+                    s = "マージ"
+                elif status == "In progress":
+                    s = "進行中"
+                elif status == "In review":
+                    s = "レビュー中"
+                elif it.get("blocked") == "Yes":
+                    s = "ブロック中"
+                elif activity == "新規起票":
+                    s = "新規起票"
+                elif activity:
+                    s = activity
+                elif status:
+                    s = status
+                else:
+                    s = ""
+                suffix = f" → {escape(s)}" if s else ""
+                slack_proj_parts.append(
+                    f'- {escape(t)} '
+                    f'(<a href="{escape(u)}">#{n}</a>)'
+                    f'{suffix}'
+                )
+
+        slack_html = "<br>".join(slack_proj_parts)
+    else:
+        slack_html = "<br>".join(slack_sections)
 
     # === Document assembly ===
     if single_repo:
@@ -3042,7 +3201,13 @@ def main():
     parser.add_argument(
         "--all-projects",
         action="store_true",
-        help="org内の全プロジェクトのアイテムを取得する (デフォルトは --project で指定した単一プロジェクト)",
+        default=True,
+        help="org内の全プロジェクトのアイテムを取得する (デフォルト: 有効)",
+    )
+    parser.add_argument(
+        "--single-project",
+        action="store_true",
+        help="--project で指定した単一プロジェクトのみ取得する",
     )
     parser.add_argument(
         "--all-members",
@@ -3050,6 +3215,8 @@ def main():
         help="org全メンバー分のチーム日報を生成する",
     )
     args = parser.parse_args()
+    if args.single_project:
+        args.all_projects = False
 
     date_str = args.date
     print(f"📅 日報生成: {date_str}")
@@ -3086,8 +3253,10 @@ def main():
         if args.all_projects:
             project_items, project_map = get_all_project_items(org)
         else:
-            project_items = get_project_items(org, args.project)
-            project_map = {args.project: f"Project #{args.project}"}
+            project_items, ptitle = get_project_items(org, args.project)
+            project_map = {args.project: ptitle or f"Project #{args.project}"}
+            for it in project_items:
+                it["project_name"] = ptitle or f"Project #{args.project}"
         status_counts = {}
         if project_items:
             for it in project_items:
@@ -3384,8 +3553,10 @@ def main():
         if args.all_projects:
             project_items, project_map = get_all_project_items(org)
         else:
-            project_items = get_project_items(org, args.project)
-            project_map = {args.project: f"Project #{args.project}"}
+            project_items, ptitle = get_project_items(org, args.project)
+            project_map = {args.project: ptitle or f"Project #{args.project}"}
+            for it in project_items:
+                it["project_name"] = ptitle or f"Project #{args.project}"
         if project_items:
             # 今日活動のあったIssue番号を全リポから収集
             today_active_issues = set()
@@ -3436,6 +3607,71 @@ def main():
     output_path = output_dir / f"daily-report-{date_str}.html"
     output_path.write_text(html, encoding="utf-8")
     print(f"✅ 日報生成完了: {output_path}")
+
+    # Claude整形用 JSON出力
+    json_data = {
+        "date": date_str,
+        "org": org,
+        "username": username,
+        "project_items": [],
+        "activities": {},
+    }
+    if project_items:
+        for it in project_items:
+            json_data["project_items"].append({
+                "number": it.get("number"),
+                "title": it.get("title", ""),
+                "url": it.get("url", ""),
+                "state": it.get("state", ""),
+                "status": it.get("status", ""),
+                "repo": it.get("repo", ""),
+                "repo_full": it.get("repo_full", ""),
+                "assignees": it.get("assignees", []),
+                "is_pr": it.get("is_pr", False),
+                "is_parent": it.get("is_parent", False),
+                "parent": it.get("parent"),
+                "project_name": it.get("project_name", ""),
+                "blocked": it.get("blocked", ""),
+                "blocker_type": it.get("blocker_type", ""),
+                "labels": it.get("labels", []),
+            })
+    for repo_name, rd in per_repo_data.items():
+        repo_act = {}
+        if rd.get("prs"):
+            repo_act["prs"] = [
+                {"number": p["number"], "title": p.get("title", ""), "state": p.get("state", ""),
+                 "url": p.get("url", ""), "issues": p.get("issues", [])}
+                for p in rd["prs"]
+            ]
+        if rd.get("issue_comments"):
+            issues_data = rd.get("issues", {})
+            repo_act["issue_comments"] = [
+                {"issue_number": ic["issue_number"],
+                 "issue_title": issues_data.get(ic["issue_number"], {}).get("title", ""),
+                 "body_preview": ic.get("body", "")[:100], "url": ic.get("url", "")}
+                for ic in rd["issue_comments"]
+            ]
+        if rd.get("created_issues"):
+            repo_act["created_issues"] = [
+                {"number": ci["number"], "title": ci.get("title", ""), "url": ci.get("url", "")}
+                for ci in rd["created_issues"]
+            ]
+        if rd.get("review_comments"):
+            repo_act["review_comments"] = [
+                {"pr_number": rc.get("pr_number"), "pr_title": rc.get("pr_title", ""),
+                 "url": rc.get("url", "")}
+                for rc in rd["review_comments"]
+            ]
+        if rd.get("merged_prs"):
+            repo_act["merged_prs"] = [
+                {"number": mp["number"], "title": mp.get("title", ""), "url": mp.get("url", "")}
+                for mp in rd["merged_prs"]
+            ]
+        if repo_act:
+            json_data["activities"][repo_name] = repo_act
+    json_path = output_dir / f"daily-report-{date_str}.json"
+    json_path.write_text(json.dumps(json_data, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"📊 JSON出力: {json_path}")
 
     # ブラウザで開く
     if not args.no_open:
