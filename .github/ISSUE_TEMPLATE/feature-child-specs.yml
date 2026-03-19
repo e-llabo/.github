@@ -1,0 +1,58 @@
+name: Feature Child - Specs
+description: 機能開発の仕様書作成用テンプレート（親Issueの子課題）
+title: "[SPEC] "
+labels:
+  - feature
+  - docs
+assignees: []
+body:
+  - type: input
+    id: parent-issue
+    attributes:
+      label: 親Issue
+      description: "親IssueのURL or 番号（例: #123）"
+      placeholder: "#"
+    validations:
+      required: true
+
+  - type: textarea
+    id: target-specs
+    attributes:
+      label: 対象仕様（docs）
+      value: |
+        - 仕様書:
+        - 基本設計:
+        - 詳細設計:
+    validations:
+      required: true
+
+  - type: textarea
+    id: change-summary
+    attributes:
+      label: 変更概要
+      description: どの仕様を追加/更新するか
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: 受け入れ条件
+      value: |
+        - [ ] 仕様・設計docsの更新が完了している
+        - [ ] 実装子Issueが参照できる粒度で記載されている
+        - [ ] 変更理由と非対象が明記されている
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 依存関係
+      value: |
+        - Depends on:
+        - Blocked by:
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 補足
+      description: レビュー観点・関連リンク

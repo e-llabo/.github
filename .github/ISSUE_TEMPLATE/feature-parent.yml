@@ -1,0 +1,76 @@
+name: Feature Parent
+description: 1機能を横断管理する親Issueテンプレート（要件/仕様/実装の子Issueを束ねる）
+title: "[FEATURE] "
+labels:
+  - feature
+assignees: []
+body:
+  - type: textarea
+    id: overview
+    attributes:
+      label: 概要
+      description: 機能の目的と背景を簡潔に記載
+    validations:
+      required: true
+
+  - type: textarea
+    id: completion-criteria
+    attributes:
+      label: 完了条件（機能全体）
+      value: |
+        - [ ] 要件調整が完了している
+        - [ ] 仕様書（docs）が作成・合意されている
+        - [ ] 実装とテストが完了し、受け入れ条件を満たしている
+    validations:
+      required: true
+
+  - type: textarea
+    id: child-issues
+    attributes:
+      label: 子Issue（必須）
+      description: 各子Issueを起票後、番号を記入してください
+      value: |
+        - [ ] 要件調整: #
+        - [ ] 仕様書作成: #
+        - [ ] 実装（テスト込み）: #
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: スコープ
+      value: |
+        - 対象:
+        - 対象外:
+
+  - type: textarea
+    id: deadline
+    attributes:
+      label: 期日・見積り
+      value: |
+        - Target date（必須）:
+        - 見積り（任意, 例: `est:3d`）:
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 依存関係
+      value: |
+        - Depends on:
+        - Blocked by:
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 補足
+      description: 合意ログ、関連PR、判断メモ
+
+  - type: checkboxes
+    id: post-creation-check
+    attributes:
+      label: 起票後チェック（Project項目）
+      options:
+        - label: Milestone を設定した
+        - label: Target date を設定した
+        - label: 初期ステータスを `Backlog` または `Ready` に設定した

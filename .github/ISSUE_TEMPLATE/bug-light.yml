@@ -1,0 +1,105 @@
+name: Bug (Light)
+description: 軽微かつ大量発生しうる不具合の一次起票テンプレート（トリアージ前提）
+title: "[BUG] "
+labels:
+  - bug
+assignees: []
+body:
+  - type: textarea
+    id: overview
+    attributes:
+      label: 概要
+      description: 何が起きているかを1-3行で記載
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-vs-actual
+    attributes:
+      label: 期待動作 / 実際の動作
+      value: |
+        - 期待:
+        - 実際:
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: 環境
+      options:
+        - dev
+        - stg
+        - prod
+        - local
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: 発生箇所（画面/API/バッチ）
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: 再現手順（分かる範囲で可）
+      value: |
+        1.
+        2.
+        3.
+
+  - type: dropdown
+    id: impact-scope
+    attributes:
+      label: 影響範囲
+      options:
+        - 単一ユーザー
+        - 一部ユーザー
+        - 全体
+    validations:
+      required: true
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: 緊急度（暫定）
+      options:
+        - 低
+        - 中
+        - 高
+    validations:
+      required: true
+
+  - type: dropdown
+    id: workaround
+    attributes:
+      label: 回避策
+      options:
+        - あり
+        - なし
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: 完了条件（受け入れ条件）
+      value: |
+        - [ ] 原因が特定されている
+        - [ ] 修正が反映され、再発しないことを確認できる
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 補足
+      description: 画像、ログ、関連リンクなど
+
+  - type: checkboxes
+    id: post-creation-check
+    attributes:
+      label: 起票後チェック（軽量バグ向け）
+      options:
+        - label: 初期ステータスを `Backlog` に設定した
+        - label: 重複候補を確認した（あればリンクを追記）
+        - label: "`Ready` に上げるタイミングで `Milestone` / `Target date` / `Priority` を設定する"

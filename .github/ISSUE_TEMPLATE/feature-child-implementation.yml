@@ -1,0 +1,68 @@
+name: Feature Child - Implementation
+description: 機能開発の実装用テンプレート（テストコード込み、親Issueの子課題）
+title: "[IMPL] "
+labels:
+  - feature
+  - implementation
+assignees: []
+body:
+  - type: input
+    id: parent-issue
+    attributes:
+      label: 親Issue
+      description: "親IssueのURL or 番号（例: #123）"
+      placeholder: "#"
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation-overview
+    attributes:
+      label: 実装概要
+      description: 実装方針と対象範囲を記載
+    validations:
+      required: true
+
+  - type: textarea
+    id: changes
+    attributes:
+      label: 対応内容
+      value: |
+        - Route / Controller / Service / Repository / Model:
+        - Migration:
+        - Docs:
+
+  - type: textarea
+    id: test-plan
+    attributes:
+      label: テスト計画
+      value: |
+        - Unit:
+        - Feature:
+        - Integration:
+        - E2E（必要時）:
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: 受け入れ条件
+      value: |
+        - [ ] 実装が完了している
+        - [ ] テストコードを追加/更新し、期待挙動を担保している
+        - [ ] 実行コマンドと結果をPRに記載できる状態である
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 依存関係
+      value: |
+        - Depends on:
+        - Blocked by:
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 補足
+      description: 既知制約・レビュー観点
