@@ -1,0 +1,71 @@
+name: Feature Child - Requirements
+description: 機能開発の要件調整用テンプレート（親Issueの子課題）
+title: "[REQ] "
+labels:
+  - feature
+  - requirements
+assignees: []
+body:
+  - type: input
+    id: parent-issue
+    attributes:
+      label: 親Issue
+      description: "親IssueのURL or 番号（例: #123）"
+      placeholder: "#"
+    validations:
+      required: true
+
+  - type: textarea
+    id: requirements-overview
+    attributes:
+      label: 要件概要
+      description: 何を決めるか、なぜ必要か
+    validations:
+      required: true
+
+  - type: textarea
+    id: decisions
+    attributes:
+      label: 決定事項
+      value: |
+        - [ ]
+        - [ ]
+
+  - type: textarea
+    id: pending
+    attributes:
+      label: 未決事項
+      value: |
+        - [ ]
+        - [ ]
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: 受け入れ条件
+      value: |
+        - [ ] 要件が箇条書きで確定している
+        - [ ] 仕様書作成に必要な前提が揃っている
+        - [ ] 影響範囲（画面/API/バッチ/運用）が整理されている
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: スコープ
+      value: |
+        - 対象:
+        - 対象外:
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 依存関係
+      value: |
+        - Depends on:
+        - Blocked by:
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 補足
+      description: 議事録・リンク
