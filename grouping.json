@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Keep Renovate's PR count low and readable, for every e-llabo repository (inherited org-wide through e-llabo/renovate-config): one weekly PR per repo for all non-major updates, every major update as its own PR opened at the next run, at most 5 open Renovate PRs per repo. Security fixes are not grouped, not scheduled and not counted against the PR limits (Renovate's vulnerabilityAlerts defaults). npm releases wait 3 days before they are proposed.",
+  "description": "Keep Renovate's PR count low and readable, for every e-llabo repository (inherited org-wide through github>e-llabo/.github): one weekly PR per repo for all non-major updates, every major update as its own PR opened at the next run, at most 5 open Renovate PRs per repo. Security fixes are not grouped, not scheduled and not counted against the PR limits (Renovate's vulnerabilityAlerts defaults). npm releases wait 3 days before they are proposed.",
   "extends": [
     "security:minimumReleaseAgeNpm"
   ],
@@ -28,7 +28,7 @@
       "prPriority": 1
     },
     {
-      "description": "Every major update as its OWN PR (developer decision 2026-09-25), opened at the next run rather than on the weekly schedule. Minor, patch and digest updates stay grouped in one weekly PR.",
+      "description": "Every major update as its OWN PR (developer decision 2026-09-25), opened at the next run rather than on the weekly schedule. Minor, patch and digest updates stay grouped (weekly here; monthly for the platform groups in default.json). Exception on purpose: packages that must move together (Renovate's monorepo and recommended groups from config:recommended, e.g. react + react-dom, or upload/download-artifact) share one major PR.",
       "matchUpdateTypes": [
         "major"
       ],
