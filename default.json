@@ -1,0 +1,198 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "e-llabo organisation preset (TOOL-1, e-llabo/infra#71). Repositories extend it with github>e-llabo/.github.",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    "customManagers:githubActionsVersions",
+    "customManagers:dockerfileVersions"
+  ],
+  "timezone": "Asia/Tokyo",
+  "dependencyDashboard": true,
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 10,
+  "enabledManagers": [
+    "github-actions",
+    "terraform",
+    "helmfile",
+    "helmv3",
+    "helm-values",
+    "dockerfile",
+    "pip_requirements",
+    "pep621",
+    "pub",
+    "npm",
+    "custom.regex"
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["dependencies", "security"]
+  },
+  "osvVulnerabilityAlerts": true,
+  "helmfile": {
+    "managerFilePatterns": ["/(^|/)helmfile\\.ya?ml\\.gotmpl$/"]
+  },
+  "helm-values": {
+    "managerFilePatterns": ["/(^|/)[\\w.-]*-values(-[\\w-]+)?\\.ya?ml$/"]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "kubectl pinned in setup-kube-tools/install.sh and runner-image Dockerfiles; a sha256 per arch sits beside it.",
+      "managerFilePatterns": ["**/setup-kube-tools/install.sh", "**/[Dd]ockerfile"],
+      "matchStrings": ["(?:^|\\s)(?:ARG\\s+)?KUBECTL_VERSION=(?<currentValue>v\\d+\\.\\d+\\.\\d+)\\s"],
+      "depNameTemplate": "kubectl",
+      "packageNameTemplate": "kubernetes/kubernetes",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "helm pinned in setup-kube-tools/install.sh and runner-image Dockerfiles; a sha256 per arch sits beside it.",
+      "managerFilePatterns": ["**/setup-kube-tools/install.sh", "**/[Dd]ockerfile"],
+      "matchStrings": ["(?:^|\\s)(?:ARG\\s+)?HELM_VERSION=(?<currentValue>v\\d+\\.\\d+\\.\\d+)\\s"],
+      "depNameTemplate": "helm",
+      "packageNameTemplate": "helm/helm",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "helmfile pinned in setup-kube-tools/install.sh and runner-image Dockerfiles; a sha256 per arch sits beside it.",
+      "managerFilePatterns": ["**/setup-kube-tools/install.sh", "**/[Dd]ockerfile"],
+      "matchStrings": ["(?:^|\\s)(?:ARG\\s+)?HELMFILE_VERSION=(?<currentValue>\\d+\\.\\d+\\.\\d+)\\s"],
+      "depNameTemplate": "helmfile",
+      "packageNameTemplate": "helmfile/helmfile",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "helm-diff plugin pinned in setup-kube-tools/install.sh and runner-image Dockerfiles; a sha256 per arch sits beside it.",
+      "managerFilePatterns": ["**/setup-kube-tools/install.sh", "**/[Dd]ockerfile"],
+      "matchStrings": ["(?:^|\\s)(?:ARG\\s+)?HELM_DIFF_VERSION=(?<currentValue>v\\d+\\.\\d+\\.\\d+)\\s"],
+      "depNameTemplate": "helm-diff",
+      "packageNameTemplate": "databus23/helm-diff",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "kustomize pinned in setup-kube-tools/install.sh and runner-image Dockerfiles; a sha256 per arch sits beside it. Upstream tags are kustomize/vX.Y.Z.",
+      "managerFilePatterns": ["**/setup-kube-tools/install.sh", "**/[Dd]ockerfile"],
+      "matchStrings": ["(?:^|\\s)(?:ARG\\s+)?KUSTOMIZE_VERSION=(?<currentValue>v\\d+\\.\\d+\\.\\d+)\\s"],
+      "depNameTemplate": "kustomize",
+      "packageNameTemplate": "kubernetes-sigs/kustomize",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^kustomize/(?<version>v.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "kubeconform pinned in setup-kube-tools/install.sh and runner-image Dockerfiles; a sha256 per arch sits beside it.",
+      "managerFilePatterns": ["**/setup-kube-tools/install.sh", "**/[Dd]ockerfile"],
+      "matchStrings": ["(?:^|\\s)(?:ARG\\s+)?KUBECONFORM_VERSION=(?<currentValue>v\\d+\\.\\d+\\.\\d+)\\s"],
+      "depNameTemplate": "kubeconform",
+      "packageNameTemplate": "yannh/kubeconform",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "gitleaks release tarball downloaded in a workflow, either inline or through a VERSION variable; a sha256 may sit beside it.",
+      "managerFilePatterns": ["/(^|/)\\.github/(workflows|actions)/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "gitleaks/gitleaks/releases/download/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/gitleaks_\\d+\\.\\d+\\.\\d+_",
+        "VERSION=(?<currentValue>\\d+\\.\\d+\\.\\d+)\\n(?:[^\\n]*\\n){0,8}?[^\\n]*gitleaks/gitleaks/releases/download/v\\$\\{VERSION\\}"
+      ],
+      "depNameTemplate": "gitleaks",
+      "packageNameTemplate": "gitleaks/gitleaks",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "gitleaks container image run by digest in a workflow, its version in a trailing comment. Renovate updates the digest.",
+      "managerFilePatterns": ["/(^|/)\\.github/(workflows|actions)/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "(?<depName>zricethezav/gitleaks)@(?<currentDigest>sha256:[a-f0-9]{64})(?:[^\\n]*\\n){0,3}?[^\\n#]*#\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "oci-cli version pinned in the oci-auth composite action.",
+      "managerFilePatterns": ["**/oci-auth/action.yml"],
+      "matchStrings": ["echo \"version=(?<currentValue>\\d+\\.\\d+\\.\\d+)\" >> \"\\$GITHUB_OUTPUT\""],
+      "depNameTemplate": "oci-cli",
+      "datasourceTemplate": "pypi"
+    },
+    {
+      "customType": "regex",
+      "description": "Terraform CLI version pinned as TF_VERSION in workflow env.",
+      "managerFilePatterns": ["/(^|/)\\.github/(workflows|actions)/.+\\.ya?ml$/"],
+      "matchStrings": ["TF_VERSION:\\s*[\"']?(?<currentValue>\\d+\\.\\d+\\.\\d+)[\"']?"],
+      "depNameTemplate": "terraform",
+      "packageNameTemplate": "hashicorp/terraform",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "GitHub Actions: one weekly PR; patch updates automerge once required checks pass.",
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions",
+      "schedule": ["* 0-5 * * 1"]
+    },
+    {
+      "description": "Patch bumps get their own weekly PR so a minor in the same week cannot hold back their automerge.",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["patch"],
+      "groupName": "github actions patch",
+      "automerge": true
+    },
+    {
+      "description": "Callers pin aube-workflows to its moving major tag on purpose (the tag is the release); never replace it with a digest.",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["e-llabo/**"],
+      "pinDigests": false,
+      "automerge": false
+    },
+    {
+      "description": "Platform Helm charts: monthly, and only releases at least 7 days old.",
+      "matchManagers": ["helmfile", "helmv3"],
+      "groupName": "platform helm charts",
+      "schedule": ["* 0-5 1 * *"],
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "Terraform providers: one monthly PR; the lock file hashes are regenerated with it.",
+      "matchManagers": ["terraform"],
+      "matchDepTypes": ["provider", "required_provider"],
+      "groupName": "terraform providers",
+      "schedule": ["* 0-5 1 * *"]
+    },
+    {
+      "description": "Helm 4 is a separate decision (aube-platform platform-cd).",
+      "matchDepNames": ["helm"],
+      "matchDatasources": ["github-releases"],
+      "allowedVersions": "<4"
+    },
+    {
+      "description": "The OCI cluster-autoscaler tag is <kubernetes version>-<build> and must track the cluster's Kubernetes minor.",
+      "matchPackageNames": ["iad.ocir.io/oracle/oci-cluster-autoscaler"],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-(?<build>\\d+)$"
+    },
+    {
+      "matchPackageNames": ["iad.ocir.io/oracle/oci-cluster-autoscaler"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    },
+    {
+      "description": "These pins carry a sha256 per download that Renovate cannot compute. The version moves; the checksums must be updated by hand, and sha256sum -c fails the build until they are.",
+      "matchDepNames": ["kubectl", "helm", "helmfile", "helm-diff", "kustomize", "kubeconform", "gitleaks"],
+      "matchDatasources": ["github-releases"],
+      "labels": ["dependencies", "checksum-manual"],
+      "automerge": false,
+      "prBodyNotes": [
+        "**Manual checksum work required.** This bump changes the version only. Where the file pins a `sha256` next to it (every arch), replace each one with the value from the upstream release's published checksum file before merging. Until then the `sha256sum -c` step fails closed. Keep `setup-kube-tools/install.sh` and `images/platform-runner/Dockerfile` in step."
+      ]
+    }
+  ]
+}
