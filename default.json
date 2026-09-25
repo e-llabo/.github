@@ -1,18 +1,16 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "e-llabo organisation preset (TOOL-1, e-llabo/infra#71). Repositories extend it with github>e-llabo/.github.",
+  "description": "e-llabo organisation preset (TOOL-1, e-llabo/infra#71). Repositories extend it with github>e-llabo/.github. Grouping and limits come from grouping.json.",
   "extends": [
     "config:recommended",
     "helpers:pinGitHubActionDigests",
     "customManagers:githubActionsVersions",
-    "customManagers:dockerfileVersions"
+    "customManagers:dockerfileVersions",
+    "github>e-llabo/.github:grouping"
   ],
-  "timezone": "Asia/Tokyo",
-  "dependencyDashboard": true,
   "labels": [
     "dependencies"
   ],
-  "prConcurrentLimit": 10,
   "enabledManagers": [
     "github-actions",
     "terraform",
@@ -210,52 +208,6 @@
   ],
   "packageRules": [
     {
-      "description": "GitHub Actions (the actions themselves, not runtimes or images they install): weekly.",
-      "matchManagers": [
-        "github-actions"
-      ],
-      "matchDepTypes": [
-        "action",
-        "workflow"
-      ],
-      "schedule": [
-        "* 0-5 * * 1"
-      ]
-    },
-    {
-      "description": "Non-major action updates in one weekly PR. Majors stay one PR each.",
-      "matchManagers": [
-        "github-actions"
-      ],
-      "matchDepTypes": [
-        "action",
-        "workflow"
-      ],
-      "matchUpdateTypes": [
-        "minor",
-        "digest",
-        "pin",
-        "pinDigest"
-      ],
-      "groupName": "github actions"
-    },
-    {
-      "description": "Patch bumps get their own weekly PR so a minor in the same week cannot hold back their automerge. A 3-day age first, so a hijacked release is usually yanked before it can merge. Automerge uses GitHub native auto-merge, so required checks and reviews still apply.",
-      "matchManagers": [
-        "github-actions"
-      ],
-      "matchDepTypes": [
-        "action",
-        "workflow"
-      ],
-      "matchUpdateTypes": [
-        "patch"
-      ],
-      "groupName": "github actions patch",
-      "automerge": true,
-      "minimumReleaseAge": "3 days"
-    },
-    {
       "description": "Callers pin aube-workflows to its moving major tag on purpose (the tag is the release); never replace it with a digest.",
       "matchManagers": [
         "github-actions"
@@ -280,14 +232,15 @@
       "minimumReleaseAgeBehaviour": "timestamp-optional"
     },
     {
-      "description": "Images pinned in Helm values are platform components too: same monthly cadence and 7-day age as the charts, one PR per image.",
+      "description": "Images pinned in Helm values are platform components too: same monthly PR, cadence and 7-day age as the charts.",
       "matchManagers": [
         "helm-values"
       ],
       "schedule": [
         "* 0-5 1 * *"
       ],
-      "minimumReleaseAge": "7 days"
+      "minimumReleaseAge": "7 days",
+      "groupName": "platform helm charts"
     },
     {
       "description": "Terraform providers: one monthly PR; the lock file hashes are regenerated with it.",
@@ -353,7 +306,9 @@
       "automerge": false,
       "prBodyNotes": [
         "**Manual checksum work required.** This bump changes the version only. Every file in this PR that pins a `sha256` next to it (each arch) needs the new value from the upstream release's published checksum file before merging. Until then `sha256sum -c` fails closed wherever that download runs. If this repo also has a test that asserts the version, update it in the same branch."
-      ]
+      ],
+      "groupName": "tool pins (manual checksum)",
+      "groupSlug": "tool-pins"
     }
   ]
 }

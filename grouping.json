@@ -1,0 +1,22 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Keep Renovate's PR count low and readable, for every e-llabo repository (inherited org-wide through e-llabo/renovate-config): one weekly PR per repo for all non-major updates, majors only on request from the Dependency Dashboard, at most 3 open Renovate PRs per repo. Security fixes are not grouped and not scheduled (Renovate's vulnerabilityAlerts defaults).",
+  "timezone": "Asia/Tokyo",
+  "dependencyDashboard": true,
+  "prConcurrentLimit": 3,
+  "prHourlyLimit": 2,
+  "schedule": ["* 0-5 * * 1"],
+  "packageRules": [
+    {
+      "description": "Every minor, patch, digest and pin update in ONE weekly PR per repository.",
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest", "lockFileMaintenance", "rollback", "bump"],
+      "groupName": "all non-major dependencies",
+      "groupSlug": "all-non-major"
+    },
+    {
+      "description": "Major versions open no PR until someone ticks them on the repository's Dependency Dashboard issue.",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}
