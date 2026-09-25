@@ -219,37 +219,77 @@
       "automerge": false
     },
     {
-      "description": "Platform Helm charts: monthly, and only releases at least 7 days old. OCI charts publish no release date; they are proposed without the age check rather than never.",
+      "description": "Platform Helm charts: only releases at least 7 days old, majors included. OCI charts publish no release date; they are proposed without the age check rather than never.",
       "matchManagers": [
         "helmfile",
         "helmv3"
-      ],
-      "groupName": "platform helm charts",
-      "schedule": [
-        "* 0-5 1 * *"
       ],
       "minimumReleaseAge": "7 days",
       "minimumReleaseAgeBehaviour": "timestamp-optional"
     },
     {
-      "description": "Images pinned in Helm values are platform components too: same monthly PR, cadence and 7-day age as the charts.",
+      "description": "Platform Helm charts: non-major updates in one monthly PR. Majors are left out on purpose so each opens its own PR at the next run (grouping.json).",
+      "matchManagers": [
+        "helmfile",
+        "helmv3"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest",
+        "pin",
+        "pinDigest",
+        "rollback",
+        "bump"
+      ],
+      "groupName": "platform helm charts",
+      "schedule": [
+        "* 0-5 1 * *"
+      ]
+    },
+    {
+      "description": "Images pinned in Helm values are platform components too: the same 7-day age as the charts, majors included.",
       "matchManagers": [
         "helm-values"
       ],
-      "schedule": [
-        "* 0-5 1 * *"
-      ],
-      "minimumReleaseAge": "7 days",
-      "groupName": "platform helm charts"
+      "minimumReleaseAge": "7 days"
     },
     {
-      "description": "Terraform providers: one monthly PR; the lock file hashes are regenerated with it.",
+      "description": "Images pinned in Helm values: non-major updates join the monthly platform helm charts PR; each major opens its own PR at the next run.",
+      "matchManagers": [
+        "helm-values"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest",
+        "pin",
+        "pinDigest",
+        "rollback",
+        "bump"
+      ],
+      "groupName": "platform helm charts",
+      "schedule": [
+        "* 0-5 1 * *"
+      ]
+    },
+    {
+      "description": "Terraform providers: non-major updates in one monthly PR; the lock file hashes are regenerated with it. Each major opens its own PR at the next run.",
       "matchManagers": [
         "terraform"
       ],
       "matchDepTypes": [
         "provider",
         "required_provider"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest",
+        "pin",
+        "pinDigest",
+        "rollback",
+        "bump"
       ],
       "groupName": "terraform providers",
       "schedule": [
@@ -282,7 +322,11 @@
         "minor"
       ],
       "dependencyDashboardApproval": true,
-      "description": "A new Kubernetes minor must match the clusters' OKE version, so it waits on the Dependency Dashboard until a human requests it. Build bumps within a minor open normally."
+      "description": "A new Kubernetes minor must match the clusters' OKE version, so it waits on the Dependency Dashboard until a human requests it, then opens as its own PR at the next run, like a major (the version scheme makes a Kubernetes minor this package's minor). Build bumps within a minor open normally, in the monthly group.",
+      "groupName": null,
+      "schedule": [
+        "at any time"
+      ]
     },
     {
       "description": "These pins carry a sha256 per download that Renovate cannot compute. The version moves; the checksums must be updated by hand, and sha256sum -c fails the build until they are.",
@@ -306,6 +350,31 @@
       "automerge": false,
       "prBodyNotes": [
         "**Manual checksum work required.** This bump changes the version only. Every file in this PR that pins a `sha256` next to it (each arch) needs the new value from the upstream release's published checksum file before merging. Until then `sha256sum -c` fails closed wherever that download runs. If this repo also has a test that asserts the version, update it in the same branch."
+      ]
+    },
+    {
+      "description": "Non-major bumps of the manually checksummed tool pins share one weekly PR, so the checksum work is done in one sitting. Each major opens its own PR at the next run.",
+      "matchDepNames": [
+        "kubectl",
+        "helm",
+        "helmfile",
+        "helm-diff",
+        "kustomize",
+        "kubeconform",
+        "gitleaks",
+        "crane"
+      ],
+      "matchDatasources": [
+        "github-releases"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest",
+        "pin",
+        "pinDigest",
+        "rollback",
+        "bump"
       ],
       "groupName": "tool pins (manual checksum)",
       "groupSlug": "tool-pins"
