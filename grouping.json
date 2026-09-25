@@ -1,6 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Keep Renovate's PR count low and readable, for every e-llabo repository (inherited org-wide through e-llabo/renovate-config): one weekly PR per repo for all non-major updates, one PR per repo for all major updates, opened as soon as they are found, at most 3 open Renovate PRs per repo. Security fixes are not grouped and not scheduled (Renovate's vulnerabilityAlerts defaults).",
+  "description": "Keep Renovate's PR count low and readable, for every e-llabo repository (inherited org-wide through e-llabo/renovate-config): one weekly PR per repo for all non-major updates, every major update as its own PR opened at the next run, at most 5 open Renovate PRs per repo. Security fixes are not grouped, not scheduled and not counted against the PR limits (Renovate's vulnerabilityAlerts defaults). npm releases wait 3 days before they are proposed.",
+  "extends": [
+    "security:minimumReleaseAgeNpm"
+  ],
   "timezone": "Asia/Tokyo",
   "dependencyDashboard": true,
   "prConcurrentLimit": 5,
@@ -10,19 +13,19 @@
   ],
   "packageRules": [
     {
-      "description": "Every minor, patch, digest and pin update in ONE weekly PR per repository.",
+      "description": "Every minor, patch, digest and pin update in ONE weekly PR per repository. A superset of group:allNonMajor, which covers minor and patch only. Lock file maintenance and replacements are never grouped by Renovate, so they are not listed. The weekly window is 6 hours because the Mend app runs each repository only every ~4 hours. prPriority creates this PR before any waiting major when the concurrent limit is reached.",
       "matchUpdateTypes": [
         "minor",
         "patch",
         "digest",
         "pin",
         "pinDigest",
-        "lockFileMaintenance",
         "rollback",
         "bump"
       ],
       "groupName": "all non-major dependencies",
-      "groupSlug": "all-non-major"
+      "groupSlug": "all-non-major",
+      "prPriority": 1
     },
     {
       "description": "Every major update as its OWN PR (developer decision 2026-09-25), opened at the next run rather than on the weekly schedule. Minor, patch and digest updates stay grouped in one weekly PR.",
