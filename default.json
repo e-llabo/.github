@@ -228,7 +228,7 @@
       "minimumReleaseAgeBehaviour": "timestamp-optional"
     },
     {
-      "description": "Platform Helm charts: non-major updates in one monthly PR. Majors are left out on purpose so each opens its own PR at the next run (grouping.json).",
+      "description": "Platform Helm charts: non-major updates in one monthly PR. Majors are left out on purpose so each opens its own PR at the next run (grouping.json). Replacements share the monthly schedule (Renovate never groups them).",
       "matchManagers": [
         "helmfile",
         "helmv3"
@@ -240,7 +240,8 @@
         "pin",
         "pinDigest",
         "rollback",
-        "bump"
+        "bump",
+        "replacement"
       ],
       "groupName": "platform helm charts",
       "schedule": [
@@ -248,14 +249,15 @@
       ]
     },
     {
-      "description": "Images pinned in Helm values are platform components too: the same 7-day age as the charts, majors included.",
+      "description": "Images pinned in Helm values are platform components too: the same 7-day age as the charts, majors included. Registries other than Docker Hub publish no release date, so those images are proposed without the age check rather than never.",
       "matchManagers": [
         "helm-values"
       ],
-      "minimumReleaseAge": "7 days"
+      "minimumReleaseAge": "7 days",
+      "minimumReleaseAgeBehaviour": "timestamp-optional"
     },
     {
-      "description": "Images pinned in Helm values: non-major updates join the monthly platform helm charts PR; each major opens its own PR at the next run.",
+      "description": "Images pinned in Helm values: non-major updates join the monthly platform helm charts PR; each major opens its own PR at the next run. Replacements share the monthly schedule (Renovate never groups them).",
       "matchManagers": [
         "helm-values"
       ],
@@ -266,7 +268,8 @@
         "pin",
         "pinDigest",
         "rollback",
-        "bump"
+        "bump",
+        "replacement"
       ],
       "groupName": "platform helm charts",
       "schedule": [
@@ -274,7 +277,7 @@
       ]
     },
     {
-      "description": "Terraform providers: non-major updates in one monthly PR; the lock file hashes are regenerated with it. Each major opens its own PR at the next run.",
+      "description": "Terraform providers: non-major updates in one monthly PR; the lock file hashes are regenerated with it. Each major opens its own PR at the next run. Replacements share the monthly schedule (Renovate never groups them).",
       "matchManagers": [
         "terraform"
       ],
@@ -289,7 +292,8 @@
         "pin",
         "pinDigest",
         "rollback",
-        "bump"
+        "bump",
+        "replacement"
       ],
       "groupName": "terraform providers",
       "schedule": [
