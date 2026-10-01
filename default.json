@@ -22,6 +22,10 @@
     "pep621",
     "pub",
     "npm",
+    "composer",
+    "docker-compose",
+    "gradle",
+    "gradle-wrapper",
     "custom.regex"
   ],
   "vulnerabilityAlerts": {
