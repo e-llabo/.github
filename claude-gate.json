@@ -1,0 +1,16 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Opt-in: every Renovate PR may auto-merge, but only after the Claude gate approved it (e-llabo/aube-workflows .github/actions/renovate-gate). A repository extends this ONLY when it runs the gate and its ruleset requires a review: without a required approval or check, auto-merge would merge on its own. Extend it after github>e-llabo/.github so these rules win. The exclusions keep the organisation preset's automerge: false for the e-llabo workflow pins and the manually checksummed tool pins.",
+  "packageRules": [
+    {
+      "matchPackageNames": ["!e-llabo/**", "!ghcr.io/e-llabo/**"],
+      "matchDepNames": ["!kubectl", "!helm", "!helmfile", "!helm-diff", "!kustomize", "!kubeconform", "!gitleaks", "!crane"],
+      "matchUpdateTypes": ["major", "minor", "patch", "digest", "pin", "pinDigest", "rollback", "replacement", "bump", "lockFileMaintenance"],
+      "minimumReleaseAge": "3 days",
+      "minimumReleaseAgeBehaviour": "timestamp-optional",
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    }
+  ]
+}
