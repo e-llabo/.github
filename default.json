@@ -212,6 +212,18 @@
   ],
   "packageRules": [
     {
+      "description": "MySQL stays on the 8.4 LTS track. Renovate cannot tell Innovation releases (9.x, 26.x) from LTS ones, so it proposed 9.6 -> 26.10 as an ordinary major; pin the track by name.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "mysql",
+        "docker.io/library/mysql",
+        "library/mysql"
+      ],
+      "allowedVersions": "/^8\\.4(\\.\\d+)?$/"
+    },
+    {
       "description": "Callers pin aube-workflows to its moving major tag on purpose (the tag is the release); never replace it with a digest.",
       "matchManagers": [
         "github-actions"
