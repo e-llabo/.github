@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Keep Renovate's PR count low and readable, for every e-llabo repository (inherited org-wide through github>e-llabo/.github): one weekly PR per repo for all non-major updates, every major update as its own PR opened at the next run, at most 5 open Renovate PRs per repo. Security fixes are not grouped, not scheduled and not counted against the PR limits (Renovate's vulnerabilityAlerts defaults). npm releases wait 3 days before they are proposed.",
+  "description": "Keep Renovate's PR count low and readable, for every e-llabo repository (inherited org-wide through github>e-llabo/.github): one weekly PR per repo for all non-major updates, every major update as its own PR opened at the next run, at most 5 open Renovate PRs per repo. Security fixes are not grouped, not scheduled and not counted against the PR limits (Renovate's vulnerabilityAlerts defaults). npm releases wait 3 days before they are proposed. Packages that must move together (their versions depend on each other) share one PR for every update type, majors included: see the ecosystem groups at the end of packageRules. A repository adds none of these; it only holds back a version when a real constraint of its own requires it.",
   "extends": [
     "security:minimumReleaseAgeNpm"
   ],
@@ -35,6 +35,71 @@
       "schedule": [
         "at any time"
       ]
+    },
+    {
+      "description": "FlutterFire plugins depend on each other's major version (firebase_analytics 13 needs firebase_core 5), so every update moves them in one PR. separateMajorMinor is off because the 0.x plugins count their minors as majors and would split the group.",
+      "matchManagers": [
+        "pub"
+      ],
+      "matchPackageNames": [
+        "/^firebase_/"
+      ],
+      "groupName": "firebase",
+      "groupSlug": "firebase",
+      "separateMajorMinor": false
+    },
+    {
+      "description": "The Node.js runtime and its type definitions: a runtime bump without @types/node (or the reverse) fails type checking.",
+      "matchDepNames": [
+        "node",
+        "@types/node"
+      ],
+      "groupName": "node.js",
+      "groupSlug": "nodejs"
+    },
+    {
+      "description": "pnpm itself and the action that installs it must agree, or the lockfile format changes under CI.",
+      "matchDepNames": [
+        "pnpm",
+        "pnpm/action-setup"
+      ],
+      "groupName": "pnpm",
+      "groupSlug": "pnpm"
+    },
+    {
+      "description": "vitest and its companion packages share one major.",
+      "matchPackageNames": [
+        "vitest",
+        "/^@vitest\\//"
+      ],
+      "groupName": "vitest",
+      "groupSlug": "vitest"
+    },
+    {
+      "description": "ESLint, its plugins and typescript-eslint: a new ESLint major needs matching plugin majors.",
+      "matchPackageNames": [
+        "eslint",
+        "/^@eslint\\//",
+        "/^eslint-/",
+        "typescript-eslint",
+        "/^@typescript-eslint\\//"
+      ],
+      "groupName": "eslint",
+      "groupSlug": "eslint"
+    },
+    {
+      "description": "The official GitHub Actions (actions/*) move to a new Node runtime together; one PR per repository instead of one per action. Third-party actions keep their own PRs.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackageNames": [
+        "/^actions\\//"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": "github actions (actions/*) majors",
+      "groupSlug": "github-actions-official-major"
     }
   ]
 }
