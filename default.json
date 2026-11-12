@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "e-llabo organisation preset (TOOL-1, e-llabo/infra#71). Repositories extend it with github>e-llabo/.github. Grouping and limits come from grouping.json.",
+  "description": "e-llabo organisation preset (TOOL-1, e-llabo/infra#71). Repositories extend it with github>e-llabo/.github. Grouping and limits come from grouping.json. rebaseWhen is conflicted: Renovate rebases a PR only when it conflicts, even in a repository that requires branches to be up to date, where an auto-merging PR that falls behind then waits for a conflict or a ticked rebase box (such a repository sets rebaseWhen: behind-base-branch in its own renovate.json); the Renovate gate retests PRs that were red only because the base branch was red, in repositories that have the renovate-claude-retest.yml caller.",
   "extends": [
     "config:recommended",
     "helpers:pinGitHubActionDigests",
@@ -11,6 +11,7 @@
   "labels": [
     "dependencies"
   ],
+  "rebaseWhen": "conflicted",
   "enabledManagers": [
     "github-actions",
     "terraform",
