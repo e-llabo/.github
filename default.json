@@ -11,6 +11,7 @@
   "labels": [
     "dependencies"
   ],
+  "rebaseWhen": "conflicted",
   "enabledManagers": [
     "github-actions",
     "terraform",
