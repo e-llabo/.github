@@ -12,6 +12,14 @@
     "dependencies"
   ],
   "rebaseWhen": "conflicted",
+  "hostRules": [
+    {
+      "description": "Private @e-llabo/* npm packages on GitHub Packages. The Mend-hosted app reads the token from the org secret GITHUB_PACKAGES_TOKEN in the Mend Developer Portal (a read:packages token); this file only names it.",
+      "matchHost": "npm.pkg.github.com",
+      "hostType": "npm",
+      "token": "{{ secrets.GITHUB_PACKAGES_TOKEN }}"
+    }
+  ],
   "enabledManagers": [
     "github-actions",
     "terraform",
